@@ -19,7 +19,7 @@ public class HelloServlet extends HttpServlet {
 
     public static final String SESSION_ID = "SESSION_ID";
 
-    public static final Map<String, String> map = new HashMap<>();
+    public static final Map<UUID, Session> map = new HashMap<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -34,15 +34,19 @@ public class HelloServlet extends HttpServlet {
             for (Cookie cookie : cookies) {
                 if (cookie.getName().equals(SESSION_ID)) {
                     sessionCookie = cookie;
-                    name = map.get(sessionCookie.getValue());
+                    Session session = map.get(UUID.fromString(sessionCookie.getValue()));
+                    if (session != null) {
+                        name = session.name();
+                    }
                 }
             }
         }
 
         if (sessionCookie == null && name != null) {
-            String id = UUID.randomUUID().toString();
-            sessionCookie = new Cookie(SESSION_ID, id);
-            map.put(id, name);
+            UUID id = UUID.randomUUID();
+            sessionCookie = new Cookie(SESSION_ID, id.toString());
+            Session session = new Session(id, name);
+            map.put(id, session);
         }
 
         if (sessionCookie != null) {
