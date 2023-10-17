@@ -1,6 +1,7 @@
 package com.hladchenko.servlet;
 
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServlet;
@@ -16,42 +17,43 @@ import java.util.UUID;
 @WebServlet("/hello")
 public class HelloServlet extends HttpServlet {
 
-    private static final String SESSION_ID = "SESSION_ID";
+    public static final String SESSION_ID = "SESSION_ID";
 
-    private static final Map<UUID, String> SESSION_STORAGE = new HashMap<>();
+    public static final Map<String, String> map = new HashMap<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 
-        String nameParameter = req.getParameter("name");
-        String name = nameParameter != null ? nameParameter : "";
+        String name = req.getParameter("name");
+
         Cookie sessionCookie = null;
+
         Cookie[] cookies = req.getCookies();
 
-        for (Cookie cookie : cookies) {
-            if (cookie.getName().equals(SESSION_ID)) {
-                sessionCookie = cookie;
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equals(SESSION_ID)) {
+                    sessionCookie = cookie;
+                    name = map.get(sessionCookie.getValue());
+                }
             }
+        }
+
+        if (sessionCookie == null && name != null) {
+            String id = UUID.randomUUID().toString();
+            sessionCookie = new Cookie(SESSION_ID, id);
+            map.put(id, name);
         }
 
         if (sessionCookie != null) {
-            String cookieName = sessionCookie.getName();
-            String cookieValue = SESSION_STORAGE.get(UUID.fromString(cookieName));
-            if (cookieValue != null) {
-                name = cookieValue;
-            }
-        } else {
-            UUID currentSessionId = UUID.randomUUID();
-            sessionCookie = new Cookie(currentSessionId.toString(), name);
-            SESSION_STORAGE.put(currentSessionId, name);
+            resp.addCookie(sessionCookie);
         }
 
-        String greeting = name.isEmpty() ? "Hello" : String.format("Hello, %s!", name);
+        String greeting = name == null ? "Hello!" : String.format("Hello, %s!", name);
 
-        var writer = new PrintWriter(resp.getOutputStream());
-        writer.write(greeting);
-        writer.flush();
-
-        resp.addCookie(sessionCookie);
+        ServletOutputStream outputStream = resp.getOutputStream();
+        PrintWriter printWriter = new PrintWriter(outputStream);
+        printWriter.write(greeting);
+        printWriter.flush();
     }
 }
